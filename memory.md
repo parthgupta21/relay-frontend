@@ -22,6 +22,9 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 - Destinations: list/create under `/endpoints/:id/destinations`, `PATCH|DELETE /destinations/:id`, `POST /destinations/:id/rotate-secret`. Create and rotate return `signingSecret` once; shown in `DestinationsPanel`'s secret dialog. `ApiError.details` carries 422 field errors (shown under the URL field).
 - Deliveries: `GET /deliveries/:id` with `attempts`; `DeliveryDetail` polls every 5s while pending, in flight or retrying.
 
+- Replay: `POST /deliveries/:id/replay` (body `{}`) returns `{ delivery }`; `POST /events/:id/replay` (`{ destinationIds }`) returns `{ deliveries }`. Both send a fresh `Idempotency-Key` (`crypto.randomUUID()`) per call via `apiFetch`'s `headers` option. 429 `QUOTA_EXCEEDED` shows the toast "Replay limit reached, try again later".
+- Delivery fields used: `trigger`, `replayOf`, `failureReason`, `nextAttemptAt`, optional `maxAttempts`.
+
 ## Run
 1. Start the backend on port 3000 (repo `relay-backend`).
 2. `npm install`, then `npm run dev` (http://localhost:5173).
@@ -30,7 +33,7 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 ## Phases
 - [x] 1 Capture + inspector: auth pages, endpoints list/create, inspector (events list, polling, rotate/rename/delete), event detail (done; API flow verified through the Vite proxy against the live backend on 2026-10-20)
 - [x] 2 Forwarding / delivery timeline UI (destinations tab, event deliveries section, `/app/deliveries/:id`; also landing page and design system; not yet exercised against the phase 2 backend)
-- [ ] 3 Reliability / replay UI
+- [x] 3 Reliability / replay UI (replay button on delivery, `ReplayDialog` on event, Retrying/manual states, retry countdown; coded against the contract, not run against the phase 3 backend)
 - [ ] 4 Realtime + analytics charts
 - [ ] 5 Tokens / usage / account pages
 - [ ] 6 Launch
@@ -43,4 +46,7 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 - UI never clicked through in a real browser; checked only by build, lint and dev-server fetches.
 - Landing code sample uses an assumed signature scheme (`x-relay-signature`-less hex HMAC-SHA256 of the raw body); confirm against the backend delivery signer.
 - Destination timeout default is unknown to the UI: empty field omits `timeoutMs`.
+- `maxAttempts` is not in the delivery contract; "attempt N of max" only renders if the backend sends it.
+- Event page deliveries list does not poll; it refreshes only after a replay or reload.
+- Replay with a stale destination selection (destination deleted meanwhile) surfaces the backend error inline in the dialog.
 - Sidebar usage meter refetches the endpoint list on every navigation.
