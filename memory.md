@@ -23,7 +23,7 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 3. Gates: `npm run build`, `npm run lint`.
 
 ## Phases
-- [ ] 1 Capture + inspector: auth pages done (F1); endpoints and inspector (F2) pending
+- [x] 1 Capture + inspector: auth pages, endpoints list/create, inspector (events list, polling, rotate/rename/delete), event detail (done, untested against live backend)
 - [ ] 2 Forwarding / delivery timeline UI
 - [ ] 3 Reliability / replay UI
 - [ ] 4 Realtime + analytics charts
@@ -33,3 +33,6 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 ## Known gaps
 - Not tested against the real backend yet (it was not running during development).
 - No automated frontend tests.
+- Changing the method filter briefly shows the previous list until the new page loads; a poll in that window can merge stale rows.
+- Reloading the endpoints list after create replaces the page with an error if that reload fails.
+- Deliveries section is a placeholder until phase 2.

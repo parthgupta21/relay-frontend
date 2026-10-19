@@ -1,6 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import RequireAuth from '@/components/RequireAuth'
 import CheckInbox from '@/pages/CheckInbox'
+import EndpointInspector from '@/pages/EndpointInspector'
+import Endpoints from '@/pages/Endpoints'
+import EventDetail from '@/pages/EventDetail'
 import ForgotPassword from '@/pages/ForgotPassword'
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
@@ -20,6 +23,9 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route element={<RequireAuth />}>
           <Route path="/" element={<Navigate to="/endpoints" replace />} />
+          <Route path="/endpoints" element={<Endpoints />} />
+          <Route path="/endpoints/:id" element={<EndpointInspector />} />
+          <Route path="/events/:id" element={<EventDetail />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
