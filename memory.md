@@ -23,7 +23,7 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 3. Gates: `npm run build`, `npm run lint`.
 
 ## Phases
-- [x] 1 Capture + inspector: auth pages, endpoints list/create, inspector (events list, polling, rotate/rename/delete), event detail (done, untested against live backend)
+- [x] 1 Capture + inspector: auth pages, endpoints list/create, inspector (events list, polling, rotate/rename/delete), event detail (done; API flow verified through the Vite proxy against the live backend on 2026-10-20)
 - [ ] 2 Forwarding / delivery timeline UI
 - [ ] 3 Reliability / replay UI
 - [ ] 4 Realtime + analytics charts
@@ -31,7 +31,7 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 - [ ] 6 Launch
 
 ## Known gaps
-- Not tested against the real backend yet (it was not running during development).
+- API flow (register, verify link, endpoint, ingest, byte-exact body) verified through the proxy; pages not yet clicked through in a real browser. Backend needs `APP_BASE_URL=http://localhost:5173`.
 - No automated frontend tests.
 - Changing the method filter briefly shows the previous list until the new page loads; a poll in that window can merge stale rows.
 - Reloading the endpoints list after create replaces the page with an error if that reload fails.
