@@ -18,7 +18,9 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 - Errors: `{ error: { code, message, details?, requestId } }`.
 - Auth: register, verify-email, resend-verification, login, logout, forgot-password, reset-password, me.
 - Endpoints: list, create, get, patch, delete, rotate-slug.
-- Events: `GET /endpoints/:id/events?limit&cursor&method`, `GET /events/:id`, `GET /events/:id/body` (download link).
+- Events: `GET /endpoints/:id/events?limit&cursor&method`, `GET /events/:id` (includes `deliveries`), `GET /events/:id/body` (download link).
+- Destinations: list/create under `/endpoints/:id/destinations`, `PATCH|DELETE /destinations/:id`, `POST /destinations/:id/rotate-secret`. Create and rotate return `signingSecret` once; shown in `DestinationsPanel`'s secret dialog. `ApiError.details` carries 422 field errors (shown under the URL field).
+- Deliveries: `GET /deliveries/:id` with `attempts`; `DeliveryDetail` polls every 5s while pending, in flight or retrying.
 
 ## Run
 1. Start the backend on port 3000 (repo `relay-backend`).
@@ -27,7 +29,7 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 
 ## Phases
 - [x] 1 Capture + inspector: auth pages, endpoints list/create, inspector (events list, polling, rotate/rename/delete), event detail (done; API flow verified through the Vite proxy against the live backend on 2026-10-20)
-- [ ] 2 Forwarding / delivery timeline UI
+- [x] 2 Forwarding / delivery timeline UI (destinations tab, event deliveries section, `/app/deliveries/:id`; also landing page and design system; not yet exercised against the phase 2 backend)
 - [ ] 3 Reliability / replay UI
 - [ ] 4 Realtime + analytics charts
 - [ ] 5 Tokens / usage / account pages
@@ -38,4 +40,7 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 - No automated frontend tests.
 - Changing the method filter briefly shows the previous list until the new page loads; a poll in that window can merge stale rows.
 - Reloading the endpoints list after create replaces the page with an error if that reload fails.
-- Deliveries section is a placeholder until phase 2.
+- UI never clicked through in a real browser; checked only by build, lint and dev-server fetches.
+- Landing code sample uses an assumed signature scheme (`x-relay-signature`-less hex HMAC-SHA256 of the raw body); confirm against the backend delivery signer.
+- Destination timeout default is unknown to the UI: empty field omits `timeoutMs`.
+- Sidebar usage meter refetches the endpoint list on every navigation.

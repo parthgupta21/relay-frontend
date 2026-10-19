@@ -7,6 +7,7 @@ import { deleteEndpoint, getEndpoint, rotateSlug, updateEndpoint } from '@/api/e
 import { listEvents } from '@/api/events'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import CopyButton from '@/components/CopyButton'
+import DestinationsPanel from '@/components/DestinationsPanel'
 import EmptyState from '@/components/EmptyState'
 import ErrorMessage from '@/components/ErrorMessage'
 import MethodBadge from '@/components/MethodBadge'
@@ -201,6 +202,7 @@ export default function EndpointInspector() {
       <Tabs defaultValue="events">
         <TabsList>
           <TabsTrigger value="events">Events</TabsTrigger>
+          <TabsTrigger value="destinations">Destinations</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -279,6 +281,10 @@ export default function EndpointInspector() {
               )}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="destinations">
+          <DestinationsPanel endpointId={id} />
         </TabsContent>
 
         <TabsContent value="settings">

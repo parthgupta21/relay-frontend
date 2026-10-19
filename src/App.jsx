@@ -4,6 +4,7 @@ import RequireAuth from '@/components/RequireAuth'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import CheckInbox from '@/pages/CheckInbox'
+import DeliveryDetail from '@/pages/DeliveryDetail'
 import EndpointInspector from '@/pages/EndpointInspector'
 import Endpoints from '@/pages/Endpoints'
 import EventDetail from '@/pages/EventDetail'
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="endpoints" element={<Endpoints />} />
               <Route path="endpoints/:id" element={<EndpointInspector />} />
               <Route path="events/:id" element={<EventDetail />} />
+              <Route path="deliveries/:id" element={<DeliveryDetail />} />
               <Route path="*" element={<NotFound />} />
             </Route>
             <Route path="*" element={<NotFound />} />

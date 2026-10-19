@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Download } from 'lucide-react'
+import { Link, useParams } from 'react-router-dom'
+import { Download, Send } from 'lucide-react'
 import { getEvent } from '@/api/events'
 import { JsonHighlight } from '@/components/CodeBlock'
 import CopyButton from '@/components/CopyButton'
+import EmptyState from '@/components/EmptyState'
 import ErrorMessage from '@/components/ErrorMessage'
 import MethodBadge from '@/components/MethodBadge'
 import PageHeader from '@/components/PageHeader'
+import StatusBadge from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
@@ -150,6 +152,26 @@ export function EventPanel({ id, onLoad }) {
         <TabsContent value="headers"><KeyValueTable rows={headers} empty="No headers." /></TabsContent>
         <TabsContent value="query"><KeyValueTable rows={query} empty="No query parameters." /></TabsContent>
       </Tabs>
+
+      <section className="space-y-3">
+        <h3 className="text-base font-semibold">Deliveries</h3>
+        {event.deliveries.length === 0 ? (
+          <EmptyState icon={Send} title="Not forwarded" description="Add a destination on the endpoint's Destinations tab to forward events like this one." />
+        ) : (
+          <ul className="divide-y rounded-xl border bg-card">
+            {event.deliveries.map((delivery) => (
+              <li key={delivery.id}>
+                <Link to={`/app/deliveries/${delivery.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-accent/50">
+                  <StatusBadge status={delivery.status} />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{delivery.destinationName}</span>
+                  <span className="text-xs text-muted-foreground">{delivery.attemptCount} {delivery.attemptCount === 1 ? 'attempt' : 'attempts'}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{delivery.lastStatus ?? '-'}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   )
 }

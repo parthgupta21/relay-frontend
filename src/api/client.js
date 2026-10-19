@@ -1,9 +1,10 @@
 export class ApiError extends Error {
-  constructor(status, code, message, requestId) {
+  constructor(status, code, message, requestId, details) {
     super(message)
     this.status = status
     this.code = code
     this.requestId = requestId
+    this.details = details
   }
 }
 
@@ -17,8 +18,8 @@ export async function apiFetch(path, { method = 'GET', body } = {}) {
   if (res.status === 204) return null
   const json = await res.json().catch(() => null)
   if (!res.ok) {
-    const { code, message, requestId } = json?.error ?? {}
-    throw new ApiError(res.status, code ?? 'UNKNOWN', message ?? res.statusText, requestId)
+    const { code, message, requestId, details } = json?.error ?? {}
+    throw new ApiError(res.status, code ?? 'UNKNOWN', message ?? res.statusText, requestId, details)
   }
   return json
 }
