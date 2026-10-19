@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { Download } from 'lucide-react'
 import { getEvent } from '@/api/events'
+import { JsonHighlight } from '@/components/CodeBlock'
 import CopyButton from '@/components/CopyButton'
 import ErrorMessage from '@/components/ErrorMessage'
-import { Badge } from '@/components/ui/badge'
+import MethodBadge from '@/components/MethodBadge'
+import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatBytes } from '@/lib/utils'
+import { formatBytes, timeAgo } from '@/lib/utils'
 
 const HEX_BYTES = 4096
 
@@ -26,11 +30,29 @@ function toHexDump(bytes) {
   return lines.join('\n')
 }
 
-function Field({ label, children }) {
+function Chip({ label, children }) {
   return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="break-all text-sm">{children}</dd>
+    <span className="inline-flex items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="break-all font-mono">{children}</span>
+    </span>
+  )
+}
+
+function KeyValueTable({ rows, empty }) {
+  if (rows.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>
+  return (
+    <div className="rounded-lg border">
+      <Table>
+        <TableBody>
+          {rows.map(([name, value], i) => (
+            <TableRow key={`${name}-${i}`}>
+              <TableCell className="w-1/3 break-all font-mono text-xs font-medium whitespace-normal">{name}</TableCell>
+              <TableCell className="break-all font-mono text-xs whitespace-normal">{value}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -40,9 +62,8 @@ function BodyViewer({ event }) {
   if (!bytes || bytes.length === 0) return <p className="text-sm text-muted-foreground">This event has no body.</p>
 
   const raw = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
-  const hasJson = event.bodyJson !== null
   const views = [
-    ...(hasJson ? [['pretty', 'Pretty', JSON.stringify(event.bodyJson, null, 2)]] : []),
+    ...(event.bodyJson !== null ? [['pretty', 'Pretty', JSON.stringify(event.bodyJson, null, 2)]] : []),
     ['raw', 'Raw', raw],
     ['hex', bytes.length > HEX_BYTES ? 'Hex (first 4 KB)' : 'Hex', toHexDump(bytes)],
   ]
@@ -56,81 +77,92 @@ function BodyViewer({ event }) {
         <div className="flex items-center gap-2">
           <CopyButton text={raw} label="Copy body" variant="outline" />
           <Button variant="outline" size="sm" asChild>
-            <a href={`/api/v1/events/${event.id}/body`} download>Download raw</a>
+            <a href={`/api/v1/events/${event.id}/body`} download><Download />Download</a>
           </Button>
         </div>
       </div>
       {views.map(([value, , text]) => (
         <TabsContent key={value} value={value}>
-          <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 font-mono text-xs">{text}</pre>
+          <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-all rounded-lg border bg-card p-3 font-mono text-xs leading-relaxed">
+            {value === 'pretty' ? <JsonHighlight json={text} /> : text}
+          </pre>
         </TabsContent>
       ))}
     </Tabs>
   )
 }
 
-export default function EventDetail() {
-  const { id } = useParams()
+export function EventPanel({ id, onLoad }) {
   const [event, setEvent] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     let active = true
     getEvent(id)
-      .then((e) => active && setEvent(e))
+      .then((e) => {
+        if (!active) return
+        setEvent(e)
+        onLoad?.(e)
+      })
       .catch((err) => active && setError(err))
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, onLoad])
 
   if (error) return <ErrorMessage error={error} />
-  if (!event) return <p className="text-muted-foreground">Loading...</p>
+  if (!event) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-7 w-2/3" />
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    )
+  }
 
-  const fullPath = event.queryString ? `${event.path}?${event.queryString}` : event.path
+  const query = [...new URLSearchParams(event.queryString ?? '')]
+  const headers = Object.entries(event.headers).map(([name, value]) => [name, Array.isArray(value) ? value.join(', ') : String(value)])
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <MethodBadge method={event.method} className="mt-1" />
+          <h2 className="break-all font-mono text-base font-semibold">{event.queryString ? `${event.path}?${event.queryString}` : event.path}</h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Chip label="Received"><time title={event.receivedAt}>{timeAgo(event.receivedAt)}</time></Chip>
+          <Chip label="Size">{formatBytes(event.bodySize)}</Chip>
+          <Chip label="Type">{event.contentType ?? 'none'}</Chip>
+          <Chip label="IP">{event.sourceIp}</Chip>
+          {event.idempotencyKey && <Chip label="Key">{event.idempotencyKey}</Chip>}
+        </div>
+      </div>
+
+      <Tabs defaultValue="body">
+        <TabsList>
+          <TabsTrigger value="body">Body</TabsTrigger>
+          <TabsTrigger value="headers">Headers ({headers.length})</TabsTrigger>
+          <TabsTrigger value="query">Query ({query.length})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="body"><BodyViewer event={event} /></TabsContent>
+        <TabsContent value="headers"><KeyValueTable rows={headers} empty="No headers." /></TabsContent>
+        <TabsContent value="query"><KeyValueTable rows={query} empty="No query parameters." /></TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+
+export default function EventDetail() {
+  const { id } = useParams()
+  const [endpointId, setEndpointId] = useState(null)
+  const onLoad = useCallback((e) => setEndpointId(e.endpointId), [])
 
   return (
     <div className="space-y-6">
-      <Link to={`/app/endpoints/${event.endpointId}`} className="text-sm text-muted-foreground hover:underline">Back to events</Link>
-
-      <div className="flex items-start gap-3">
-        <Badge variant="outline" className="font-mono">{event.method}</Badge>
-        <h1 className="break-all font-mono text-lg font-semibold">{fullPath}</h1>
-      </div>
-
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Field label="Received">{new Date(event.receivedAt).toLocaleString()} ({event.receivedAt})</Field>
-        <Field label="Source IP">{event.sourceIp}</Field>
-        <Field label="Size">{formatBytes(event.bodySize)}</Field>
-        <Field label="Content type">{event.contentType ?? 'none'}</Field>
-        <Field label="Idempotency key">{event.idempotencyKey ?? 'none'}</Field>
-      </dl>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Headers</h2>
-        <Table>
-          <TableBody>
-            {Object.entries(event.headers).map(([name, value]) => (
-              <TableRow key={name}>
-                <TableCell className="w-1/3 break-all font-mono text-xs font-medium">{name}</TableCell>
-                <TableCell className="break-all font-mono text-xs whitespace-normal">{Array.isArray(value) ? value.join(', ') : String(value)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Body</h2>
-        <BodyViewer event={event} />
-      </section>
-
-      {event.deliveries.length === 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Deliveries</h2>
-          <p className="text-sm text-muted-foreground">Forwarding arrives in the next phase</p>
-        </section>
-      )}
+      <PageHeader title="Event" back={{ to: endpointId ? `/app/endpoints/${endpointId}` : '/app/endpoints', label: 'Back to events' }} />
+      <EventPanel id={id} onLoad={onLoad} />
     </div>
   )
 }

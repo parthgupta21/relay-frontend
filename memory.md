@@ -11,6 +11,7 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 - Lint is `oxlint` (what the current Vite template ships), not eslint.
 - Design system: Geist Sans/Mono (`@fontsource-variable`), zinc neutrals with one violet accent (`brand`, `brand-text`), semantic `success`/`warning`/`info` tokens in `index.css`. Dark-first via class on `<html>`; `useTheme` follows the system until the user toggles, persisted in localStorage (try/catch). Toasts via `sonner`; motion via `motion` with `MotionConfig reducedMotion="user"`.
 - Routes: `/` landing (public), auth pages, `/app/*` behind `RequireAuth`; old `/endpoints...` and `/events/:id` redirect to `/app/...`.
+- App shell: `Sidebar` (nav, "Soon" items disabled, endpoints usage meter fetched per navigation, user dropdown) in `AppLayout`; below `lg` it renders inside a `Sheet`. Inspector is two-pane at `lg` (`matchMedia` via `useSyncExternalStore`); below that rows link to `/app/events/:id`. `EventPanel` (exported from `EventDetail.jsx`) is shared by the pane and the page.
 - Payloads render as text only. Never use `dangerouslySetInnerHTML`.
 
 ## API contract used (all under /api/v1)

@@ -1,31 +1,118 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
+import { Inbox, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 import { deleteEndpoint, getEndpoint, rotateSlug, updateEndpoint } from '@/api/endpoints'
 import { listEvents } from '@/api/events'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import CopyButton from '@/components/CopyButton'
+import EmptyState from '@/components/EmptyState'
 import ErrorMessage from '@/components/ErrorMessage'
-import { Badge } from '@/components/ui/badge'
+import MethodBadge from '@/components/MethodBadge'
+import PageHeader from '@/components/PageHeader'
+import StatusBadge from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePolling } from '@/hooks/usePolling'
-import { formatBytes, timeAgo } from '@/lib/utils'
+import { cn, formatBytes, timeAgo } from '@/lib/utils'
+import { EventPanel } from '@/pages/EventDetail'
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+const desktop = window.matchMedia('(min-width: 1024px)')
+
+function useIsDesktop() {
+  return useSyncExternalStore(
+    (onChange) => {
+      desktop.addEventListener('change', onChange)
+      return () => desktop.removeEventListener('change', onChange)
+    },
+    () => desktop.matches,
+  )
+}
+
+function SettingsTab({ endpoint, onChange, onError, onRotate, onDelete }) {
+  const [name, setName] = useState(endpoint.name)
+  const [idempotencyHeader, setIdempotencyHeader] = useState(endpoint.idempotencyHeader ?? '')
+  const [saving, setSaving] = useState(false)
+
+  async function save(e) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      onChange(await updateEndpoint(endpoint.id, { name, idempotencyHeader: idempotencyHeader || null }))
+      toast.success('Settings saved')
+    } catch (err) {
+      onError(err)
+    }
+    setSaving(false)
+  }
+
+  async function toggleActive(isActive) {
+    try {
+      onChange(await updateEndpoint(endpoint.id, { isActive }))
+      toast.success(isActive ? 'Endpoint enabled' : 'Endpoint disabled')
+    } catch (err) {
+      onError(err)
+    }
+  }
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <form onSubmit={save} className="space-y-4 rounded-xl border bg-card p-5">
+        <div className="space-y-2">
+          <Label htmlFor="endpoint-name">Name</Label>
+          <Input id="endpoint-name" required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="endpoint-idempotency">Idempotency header</Label>
+          <Input id="endpoint-idempotency" className="font-mono" placeholder="x-github-delivery" maxLength={100} value={idempotencyHeader} onChange={(e) => setIdempotencyHeader(e.target.value)} />
+          <p className="text-xs text-muted-foreground">Requests that repeat this header's value are captured once.</p>
+        </div>
+        <Button type="submit" disabled={saving}>Save changes</Button>
+      </form>
+
+      <div className="flex items-center justify-between gap-4 rounded-xl border bg-card p-5">
+        <div>
+          <p className="text-sm font-medium">Accept requests</p>
+          <p className="text-sm text-muted-foreground">Disabled endpoints reject incoming requests.</p>
+        </div>
+        <Switch checked={endpoint.isActive} onCheckedChange={toggleActive} aria-label="Accept requests" />
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-destructive/40 p-5">
+        <h3 className="font-medium text-destructive">Danger zone</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-md text-sm text-muted-foreground">Rotating the slug gives you a new URL. The old URL stops working immediately.</p>
+          <Button variant="outline" onClick={onRotate}>Rotate slug</Button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-md text-sm text-muted-foreground">Deletes the endpoint and all of its captured events.</p>
+          <Button variant="destructive" onClick={onDelete}>Delete endpoint</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function EndpointInspector() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
   const [endpoint, setEndpoint] = useState(null)
   const [events, setEvents] = useState(null)
   const [nextCursor, setNextCursor] = useState(null)
   const [method, setMethod] = useState('ALL')
+  const [selectedId, setSelectedId] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState(null)
-  const [newName, setNewName] = useState('')
 
   const methodFilter = method === 'ALL' ? undefined : method
 
@@ -83,91 +170,121 @@ export default function EndpointInspector() {
     setBusy(false)
   }
 
-  async function toggleActive(isActive) {
-    try {
-      setEndpoint(await updateEndpoint(id, { isActive }))
-    } catch (err) {
-      setError(err)
-    }
+  if (error && (!endpoint || !events)) return <ErrorMessage error={error} />
+  if (!endpoint || !events) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-16 w-1/2" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
   }
 
-  if (error && (!endpoint || !events)) return <ErrorMessage error={error} />
-  if (!endpoint || !events) return <p className="text-muted-foreground">Loading...</p>
+  const activeId = selectedId ?? events[0]?.id
 
   return (
     <div className="space-y-6">
-      <Link to="/app/endpoints" className="text-sm text-muted-foreground hover:underline">All endpoints</Link>
-
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold break-all">{endpoint.name}</h1>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={endpoint.isActive} onCheckedChange={toggleActive} />
-            {endpoint.isActive ? 'Enabled' : 'Disabled'}
-          </label>
-        </div>
-        <div className="flex items-center gap-1 rounded-md bg-muted px-3 py-2">
-          <code className="min-w-0 flex-1 truncate text-sm">{endpoint.url}</code>
-          <CopyButton text={endpoint.url} label="Copy URL" />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => { setNewName(endpoint.name); setDialog('rename') }}>Rename</Button>
-          <Button variant="outline" size="sm" onClick={() => setDialog('rotate')}>Rotate slug</Button>
-          <Button variant="destructive" size="sm" onClick={() => setDialog('delete')}>Delete</Button>
-        </div>
-      </div>
+      <PageHeader
+        back={{ to: '/app/endpoints', label: 'All endpoints' }}
+        title={endpoint.name}
+        description={
+          <span className="flex items-center gap-1">
+            <code className="min-w-0 break-all font-mono text-xs">{endpoint.url}</code>
+            <CopyButton text={endpoint.url} label="Copy URL" />
+          </span>
+        }
+        actions={<StatusBadge status={endpoint.isActive ? 'active' : 'disabled'} />}
+      />
 
       <ErrorMessage error={error} />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Events</h2>
-        <div className="flex items-center gap-2">
-          <Select value={method} onValueChange={setMethod}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All methods</SelectItem>
-              {METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={fetchNew} disabled={busy}>Refresh</Button>
-        </div>
-      </div>
+      <Tabs defaultValue="events">
+        <TabsList>
+          <TabsTrigger value="events">Events</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
 
-      {events.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No events yet. Send a request to the URL above and it shows up here.
-        </p>
-      ) : (
-        <ul className="divide-y rounded-lg border">
-          {events.map((event) => (
-            <li key={event.id}>
-              <Link to={`/app/events/${event.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-muted/50">
-                <Badge variant="outline" className="font-mono">{event.method}</Badge>
-                <span className="min-w-0 flex-1 truncate font-mono text-sm">{event.path}</span>
-                <span className="text-xs text-muted-foreground">{event.contentType ?? 'no content type'}</span>
-                <span className="text-xs text-muted-foreground">{formatBytes(event.bodySize)}</span>
-                <time className="text-xs text-muted-foreground" title={event.receivedAt}>{timeAgo(event.receivedAt)}</time>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+        <TabsContent value="events" className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-sm text-success">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-60" />
+                <span className="relative inline-flex size-2 rounded-full bg-success" />
+              </span>
+              Live
+            </span>
+            <div className="flex items-center gap-2">
+              <Select value={method} onValueChange={setMethod}>
+                <SelectTrigger className="w-36" aria-label="Filter by method"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All methods</SelectItem>
+                  {METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={fetchNew} disabled={busy} aria-label="Refresh events"><RefreshCw className={busy ? 'animate-spin' : ''} /></Button>
+                </TooltipTrigger>
+                <TooltipContent>Refresh</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
 
-      {nextCursor && (
-        <div className="text-center">
-          <Button variant="outline" onClick={loadMore} disabled={busy}>Load more</Button>
-        </div>
-      )}
+          {events.length === 0 ? (
+            <EmptyState icon={Inbox} title="No events yet" description="Send a request to the endpoint URL and it shows up here within seconds.">
+              <code className="mt-2 max-w-full break-all rounded-md bg-muted px-3 py-2 font-mono text-xs">
+                curl -X POST {endpoint.url} -d &apos;hello&apos;
+              </code>
+            </EmptyState>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
+              <div>
+                <ul className="divide-y overflow-hidden rounded-xl border bg-card lg:max-h-[40rem] lg:overflow-y-auto">
+                  <AnimatePresence initial={false}>
+                    {events.map((event) => (
+                      <motion.li key={event.id} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+                        <Link
+                          to={`/app/events/${event.id}`}
+                          onClick={(e) => {
+                            if (!isDesktop) return
+                            e.preventDefault()
+                            setSelectedId(event.id)
+                          }}
+                          aria-current={isDesktop && event.id === activeId ? 'true' : undefined}
+                          className={cn('flex flex-col gap-1 px-3 py-2.5 transition-colors hover:bg-accent/50', isDesktop && event.id === activeId && 'bg-accent')}
+                        >
+                          <span className="flex items-center gap-2">
+                            <MethodBadge method={event.method} />
+                            <span className="min-w-0 flex-1 truncate font-mono text-xs">{event.path}</span>
+                          </span>
+                          <span className="flex justify-between text-xs text-muted-foreground">
+                            <time title={event.receivedAt}>{timeAgo(event.receivedAt)}</time>
+                            <span>{formatBytes(event.bodySize)}</span>
+                          </span>
+                        </Link>
+                      </motion.li>
+                    ))}
+                  </AnimatePresence>
+                </ul>
+                {nextCursor && (
+                  <div className="mt-3 text-center">
+                    <Button variant="outline" onClick={loadMore} disabled={busy}>Load more</Button>
+                  </div>
+                )}
+              </div>
+              {isDesktop && activeId && (
+                <div className="min-w-0 rounded-xl border bg-card p-5">
+                  <EventPanel key={activeId} id={activeId} />
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
 
-      <ConfirmDialog
-        open={dialog === 'rename'}
-        onOpenChange={(open) => !open && setDialog(null)}
-        title="Rename endpoint"
-        confirmLabel="Save"
-        onConfirm={async () => setEndpoint(await updateEndpoint(id, { name: newName }))}
-      >
-        <Input required maxLength={100} value={newName} onChange={(e) => setNewName(e.target.value)} aria-label="Name" />
-      </ConfirmDialog>
+        <TabsContent value="settings">
+          <SettingsTab endpoint={endpoint} onChange={setEndpoint} onError={setError} onRotate={() => setDialog('rotate')} onDelete={() => setDialog('delete')} />
+        </TabsContent>
+      </Tabs>
 
       <ConfirmDialog
         open={dialog === 'rotate'}
@@ -176,7 +293,10 @@ export default function EndpointInspector() {
         description="You get a new URL. The old URL stops working immediately, so update every service that sends to it."
         confirmLabel="Rotate"
         destructive
-        onConfirm={async () => setEndpoint(await rotateSlug(id))}
+        onConfirm={async () => {
+          setEndpoint(await rotateSlug(id))
+          toast.success('Slug rotated')
+        }}
       />
 
       <ConfirmDialog
@@ -188,6 +308,7 @@ export default function EndpointInspector() {
         destructive
         onConfirm={async () => {
           await deleteEndpoint(id)
+          toast.success('Endpoint deleted')
           navigate('/app/endpoints', { replace: true })
         }}
       />

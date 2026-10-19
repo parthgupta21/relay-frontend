@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
+import { Plus, Webhook } from 'lucide-react'
+import { toast } from 'sonner'
 import { createEndpoint, listEndpoints } from '@/api/endpoints'
+import CodeBlock from '@/components/CodeBlock'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import CopyButton from '@/components/CopyButton'
+import EmptyState from '@/components/EmptyState'
 import ErrorMessage from '@/components/ErrorMessage'
-import { Badge } from '@/components/ui/badge'
+import PageHeader from '@/components/PageHeader'
+import StatusBadge from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
+
+const CURL = `curl -X POST <your-endpoint-url> \\
+  -H 'content-type: application/json' \\
+  -d '{"hello":"world"}'`
 
 export default function Endpoints() {
   const { me } = useOutletContext()
@@ -34,63 +43,49 @@ export default function Endpoints() {
     setName('')
     setIdempotencyHeader('')
     setTick((t) => t + 1)
+    toast.success('Endpoint created')
   }
 
   if (error) return <ErrorMessage error={error} />
-  if (!endpoints) return <p className="text-muted-foreground">Loading...</p>
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Endpoints</h1>
-          <p className="text-sm text-muted-foreground">
-            {endpoints.length} of {me.workspace.limits.maxEndpoints} endpoints used
-          </p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>New endpoint</Button>
-      </div>
+      <PageHeader
+        title="Endpoints"
+        description={endpoints && `${endpoints.length} of ${me.workspace.limits.maxEndpoints} endpoints used`}
+        actions={<Button variant="brand" onClick={() => setDialogOpen(true)}><Plus />New endpoint</Button>}
+      />
 
-      {endpoints.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center space-y-3">
-          <p className="font-medium">No endpoints yet</p>
-          <p className="text-sm text-muted-foreground">Create one, then send it a request:</p>
-          <pre className="mx-auto max-w-full overflow-x-auto rounded-md bg-muted p-3 text-left text-xs">
-            {`curl -X POST <your-endpoint-url> -H 'content-type: application/json' -d '{"hello":"world"}'`}
-          </pre>
+      {!endpoints ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
         </div>
+      ) : endpoints.length === 0 ? (
+        <EmptyState icon={Webhook} title="No endpoints yet" description="Create an endpoint, then send it a request. It shows up in the inspector right away.">
+          <Button variant="brand" onClick={() => setDialogOpen(true)}><Plus />Create your first endpoint</Button>
+          <CodeBlock label="curl" code={CURL} className="mt-4 w-full max-w-xl text-left" />
+        </EmptyState>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>URL</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Last 24h</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {endpoints.map((endpoint) => (
-              <TableRow key={endpoint.id}>
-                <TableCell className="font-medium">
-                  <Link to={`/app/endpoints/${endpoint.id}`} className="underline-offset-4 hover:underline">{endpoint.name}</Link>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <code className="max-w-[16rem] truncate text-xs">{endpoint.url}</code>
-                    <CopyButton text={endpoint.url} label="Copy URL" />
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={endpoint.isActive ? 'default' : 'secondary'}>{endpoint.isActive ? 'Active' : 'Disabled'}</Badge>
-                </TableCell>
-                <TableCell className="text-right">{endpoint.eventCount24h}</TableCell>
-                <TableCell>{new Date(endpoint.createdAt).toLocaleDateString()}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {endpoints.map((endpoint) => (
+            <li key={endpoint.id} className="relative flex flex-col gap-4 rounded-xl border bg-card p-4 transition-colors hover:border-foreground/20">
+              <div className="flex items-start justify-between gap-2">
+                <Link to={`/app/endpoints/${endpoint.id}`} className="min-w-0 break-words font-medium after:absolute after:inset-0 hover:underline">
+                  {endpoint.name}
+                </Link>
+                <StatusBadge status={endpoint.isActive ? 'active' : 'disabled'} />
+              </div>
+              <div className="relative z-10 flex items-center gap-1 rounded-md bg-muted px-2 py-1">
+                <code className="min-w-0 flex-1 truncate font-mono text-xs">{endpoint.url}</code>
+                <CopyButton text={endpoint.url} label="Copy URL" />
+              </div>
+              <div className="mt-auto flex items-end justify-between text-xs text-muted-foreground">
+                <span><span className="text-xl font-semibold text-foreground">{endpoint.eventCount24h}</span> events / 24h</span>
+                <span>{new Date(endpoint.createdAt).toLocaleDateString()}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
       <ConfirmDialog

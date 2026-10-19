@@ -1,12 +1,17 @@
 import { useState } from 'react'
-import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
+import { Menu } from 'lucide-react'
 import { logout } from '@/api/auth'
+import Logo from '@/components/Logo'
+import Sidebar from '@/components/Sidebar'
 import VerifyBanner from '@/components/VerifyBanner'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
 export default function AppLayout({ me, refresh }) {
   const navigate = useNavigate()
   const [loggingOut, setLoggingOut] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -17,21 +22,30 @@ export default function AppLayout({ me, refresh }) {
     }
   }
 
+  const sidebar = <Sidebar me={me} onLogout={handleLogout} loggingOut={loggingOut} />
+
   return (
-    <div className="min-h-screen">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/app/endpoints" className="font-bold tracking-widest">RELAY</Link>
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="truncate text-sm text-muted-foreground">{me.user.email}</span>
-            <Button variant="outline" size="sm" onClick={handleLogout} disabled={loggingOut}>Log out</Button>
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        {!me.user.emailVerified && <VerifyBanner email={me.user.email} />}
-        <Outlet context={{ me, refresh }} />
-      </main>
+    <div className="min-h-screen lg:grid lg:grid-cols-[16rem_1fr]">
+      <aside className="sticky top-0 hidden h-screen border-r bg-sidebar lg:block">{sidebar}</aside>
+      <div className="min-w-0">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur-lg lg:hidden">
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open menu"><Menu /></Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 bg-sidebar p-0" onClick={(e) => e.target.closest('a') && setMenuOpen(false)}>
+              <SheetTitle className="sr-only">Menu</SheetTitle>
+              <SheetDescription className="sr-only">Navigation</SheetDescription>
+              {sidebar}
+            </SheetContent>
+          </Sheet>
+          <Logo to="/app/endpoints" />
+        </header>
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+          {!me.user.emailVerified && <VerifyBanner email={me.user.email} />}
+          <Outlet context={{ me, refresh }} />
+        </main>
+      </div>
     </div>
   )
 }
