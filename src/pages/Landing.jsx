@@ -39,9 +39,10 @@ const CURL = `curl -X POST https://relay.dev/h/k7x2m9 \\
 
 const VERIFY = `import { createHmac, timingSafeEqual } from 'node:crypto'
 
-export function verify(rawBody, signature, secret) {
-  const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
-  return timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
+export function verify(rawBody, header, secret) {
+  const { t, v1 } = Object.fromEntries(header.split(',').map((part) => part.split('=')))
+  const expected = createHmac('sha256', secret).update(\`\${t}.\${rawBody}\`).digest('hex')
+  return v1.length === expected.length && timingSafeEqual(Buffer.from(expected), Buffer.from(v1))
 }`
 
 function MockInspector() {
