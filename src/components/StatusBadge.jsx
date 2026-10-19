@@ -5,7 +5,7 @@ const STATES = {
   disabled: ['Disabled', 'text-muted-foreground', 'bg-muted-foreground'],
   pending: ['Pending', 'text-muted-foreground', 'bg-muted-foreground'],
   in_flight: ['In flight', 'text-warning', 'bg-warning animate-pulse'],
-  retry_scheduled: ['Retrying', 'text-warning', 'bg-warning'],
+  retry_scheduled: ['Retrying', 'text-info', 'bg-info'],
   succeeded: ['Succeeded', 'text-success', 'bg-success'],
   failed: ['Failed', 'text-destructive', 'bg-destructive'],
   success: ['Success', 'text-success', 'bg-success'],
@@ -13,6 +13,19 @@ const STATES = {
   timeout: ['Timeout', 'text-destructive', 'bg-destructive'],
   network_error: ['Network error', 'text-destructive', 'bg-destructive'],
   blocked: ['Blocked', 'text-destructive', 'bg-destructive'],
+}
+
+const FAILURE_REASONS = {
+  non_retryable: 'Destination rejected the request (not retryable)',
+  exhausted: 'Retries exhausted',
+  ssrf_blocked: 'Blocked by SSRF policy',
+  destination_disabled: 'Destination was disabled',
+}
+
+export const failureLabel = (reason) => FAILURE_REASONS[reason] ?? reason
+
+export function ManualTag({ className }) {
+  return <span className={cn('rounded-md border px-1.5 py-0.5 text-xs text-brand-text', className)}>manual</span>
 }
 
 export default function StatusBadge({ status, className }) {

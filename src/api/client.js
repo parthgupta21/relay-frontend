@@ -8,11 +8,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch(path, { method = 'GET', body } = {}) {
+export async function apiFetch(path, { method = 'GET', body, headers } = {}) {
   const res = await fetch(`/api/v1${path}`, {
     method,
     credentials: 'include',
-    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    headers: body === undefined ? headers : { 'content-type': 'application/json', ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   if (res.status === 204) return null

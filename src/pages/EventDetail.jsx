@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Download, Send } from 'lucide-react'
+import { Download, RotateCw, Send } from 'lucide-react'
 import { getEvent } from '@/api/events'
 import { JsonHighlight } from '@/components/CodeBlock'
 import CopyButton from '@/components/CopyButton'
@@ -8,7 +8,8 @@ import EmptyState from '@/components/EmptyState'
 import ErrorMessage from '@/components/ErrorMessage'
 import MethodBadge from '@/components/MethodBadge'
 import PageHeader from '@/components/PageHeader'
-import StatusBadge from '@/components/StatusBadge'
+import ReplayDialog from '@/components/ReplayDialog'
+import StatusBadge, { ManualTag } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
@@ -97,6 +98,8 @@ function BodyViewer({ event }) {
 export function EventPanel({ id, onLoad }) {
   const [event, setEvent] = useState(null)
   const [error, setError] = useState(null)
+  const [replaying, setReplaying] = useState(false)
+  const [version, setVersion] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -110,7 +113,7 @@ export function EventPanel({ id, onLoad }) {
     return () => {
       active = false
     }
-  }, [id, onLoad])
+  }, [id, onLoad, version])
 
   if (error) return <ErrorMessage error={error} />
   if (!event) {
@@ -154,7 +157,18 @@ export function EventPanel({ id, onLoad }) {
       </Tabs>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold">Deliveries</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold">Deliveries</h3>
+          <Button variant="outline" size="sm" onClick={() => setReplaying(true)}><RotateCw />Replay event</Button>
+        </div>
+        {replaying && (
+          <ReplayDialog
+            eventId={event.id}
+            endpointId={event.endpointId}
+            onClose={() => setReplaying(false)}
+            onReplayed={() => setVersion((v) => v + 1)}
+          />
+        )}
         {event.deliveries.length === 0 ? (
           <EmptyState icon={Send} title="Not forwarded" description="Add a destination on the endpoint's Destinations tab to forward events like this one." />
         ) : (
@@ -164,6 +178,7 @@ export function EventPanel({ id, onLoad }) {
                 <Link to={`/app/deliveries/${delivery.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 transition-colors hover:bg-accent/50">
                   <StatusBadge status={delivery.status} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{delivery.destinationName}</span>
+                  {delivery.trigger === 'manual' && <ManualTag />}
                   <span className="text-xs text-muted-foreground">{delivery.attemptCount} {delivery.attemptCount === 1 ? 'attempt' : 'attempts'}</span>
                   <span className="font-mono text-xs text-muted-foreground">{delivery.lastStatus ?? '-'}</span>
                 </Link>

@@ -1,14 +1,29 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { getDelivery } from '@/api/deliveries'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { RotateCw } from 'lucide-react'
+import { toast } from 'sonner'
+import { getDelivery, replayDelivery } from '@/api/deliveries'
 import ErrorMessage from '@/components/ErrorMessage'
 import PageHeader from '@/components/PageHeader'
-import StatusBadge from '@/components/StatusBadge'
+import StatusBadge, { failureLabel, ManualTag } from '@/components/StatusBadge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePolling } from '@/hooks/usePolling'
 import { timeAgo } from '@/lib/utils'
 
 const IN_PROGRESS = ['pending', 'in_flight', 'retry_scheduled']
+
+function Countdown({ at }) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const seconds = Math.max(0, Math.ceil((new Date(at).getTime() - now) / 1000))
+  return <span className="font-mono">next attempt in {Math.floor(seconds / 60)}m {seconds % 60}s</span>
+}
 
 function Attempt({ attempt, last }) {
   const headers = Object.entries(attempt.responseHeaders ?? {})
@@ -56,6 +71,20 @@ export default function DeliveryDetail() {
   const { id } = useParams()
   const [delivery, setDelivery] = useState(null)
   const [error, setError] = useState(null)
+  const [replaying, setReplaying] = useState(false)
+  const navigate = useNavigate()
+
+  async function replay() {
+    setReplaying(true)
+    try {
+      const { delivery: replayed } = await replayDelivery(id)
+      toast.success('Replay queued')
+      navigate(`/app/deliveries/${replayed.id}`)
+    } catch (err) {
+      toast.error(err.code === 'QUOTA_EXCEEDED' ? 'Replay limit reached, try again later' : err.message)
+    }
+    setReplaying(false)
+  }
 
   const load = useCallback(
     () => getDelivery(id).then(setDelivery).catch(setError),
@@ -86,15 +115,21 @@ export default function DeliveryDetail() {
         description={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <StatusBadge status={delivery.status} />
-            <span>{delivery.attemptCount} {delivery.attemptCount === 1 ? 'attempt' : 'attempts'}</span>
+            <span>
+              {delivery.maxAttempts ? `attempt ${delivery.attemptCount} of ${delivery.maxAttempts}` : `${delivery.attemptCount} ${delivery.attemptCount === 1 ? 'attempt' : 'attempts'}`}
+            </span>
             {delivery.lastStatus !== null && <span className="font-mono">last HTTP {delivery.lastStatus}</span>}
-            <span>{delivery.trigger}</span>
-            {delivery.nextAttemptAt && delivery.status === 'retry_scheduled' && <span>next attempt {timeAgo(delivery.nextAttemptAt)}</span>}
+            {delivery.trigger === 'manual' && <ManualTag />}
+            {delivery.replayOf && <Link to={`/app/deliveries/${delivery.replayOf}`} className="text-brand-text hover:underline">replay of {delivery.replayOf}</Link>}
+            {delivery.nextAttemptAt && delivery.status === 'retry_scheduled' && <Countdown at={delivery.nextAttemptAt} />}
           </span>
+        }
+        actions={
+          <Button variant="outline" onClick={replay} disabled={replaying}><RotateCw />Replay</Button>
         }
       />
 
-      {delivery.failureReason && <p className="break-words text-sm text-destructive">{delivery.failureReason}</p>}
+      {delivery.failureReason && <p className="break-words text-sm text-destructive">{failureLabel(delivery.failureReason)}</p>}
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Attempts</h2>

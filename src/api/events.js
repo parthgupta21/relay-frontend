@@ -8,3 +8,5 @@ export function listEvents(endpointId, { limit = 50, cursor, method } = {}) {
 }
 
 export const getEvent = (id) => apiFetch(`/events/${id}`)
+export const replayEvent = (id, destinationIds) =>
+  apiFetch(`/events/${id}/replay`, { method: 'POST', body: { destinationIds }, headers: { 'idempotency-key': crypto.randomUUID() } })
