@@ -9,6 +9,8 @@ Design doc: https://claude.ai/code/artifact/f69bd9a8-ff89-4860-81d7-391cddee88a4
 - Live updates are polling (`usePolling`, 5 s) until phase 4 adds sockets; swap the hook, not the pages.
 - Dev server proxies `/api` and `/h` to `http://localhost:3000`, so cookies are same-origin.
 - Lint is `oxlint` (what the current Vite template ships), not eslint.
+- Design system: Geist Sans/Mono (`@fontsource-variable`), zinc neutrals with one violet accent (`brand`, `brand-text`), semantic `success`/`warning`/`info` tokens in `index.css`. Dark-first via class on `<html>`; `useTheme` follows the system until the user toggles, persisted in localStorage (try/catch). Toasts via `sonner`; motion via `motion` with `MotionConfig reducedMotion="user"`.
+- Routes: `/` landing (public), auth pages, `/app/*` behind `RequireAuth`; old `/endpoints...` and `/events/:id` redirect to `/app/...`.
 - Payloads render as text only. Never use `dangerouslySetInnerHTML`.
 
 ## API contract used (all under /api/v1)

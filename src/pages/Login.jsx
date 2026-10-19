@@ -22,7 +22,7 @@ export default function Login() {
     setError(null)
     try {
       await login(email, password)
-      navigate(state?.from ?? '/endpoints', { replace: true })
+      navigate(state?.from ?? '/app/endpoints', { replace: true })
     } catch (err) {
       setError(err)
       setSubmitting(false)

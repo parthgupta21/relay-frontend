@@ -21,7 +21,7 @@ export default function AppLayout({ me, refresh }) {
     <div className="min-h-screen">
       <header className="border-b">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/endpoints" className="font-bold tracking-widest">RELAY</Link>
+          <Link to="/app/endpoints" className="font-bold tracking-widest">RELAY</Link>
           <div className="flex items-center gap-3 min-w-0">
             <span className="truncate text-sm text-muted-foreground">{me.user.email}</span>
             <Button variant="outline" size="sm" onClick={handleLogout} disabled={loggingOut}>Log out</Button>

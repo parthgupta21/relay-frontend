@@ -91,7 +91,7 @@ export default function EventDetail() {
 
   return (
     <div className="space-y-6">
-      <Link to={`/endpoints/${event.endpointId}`} className="text-sm text-muted-foreground hover:underline">Back to events</Link>
+      <Link to={`/app/endpoints/${event.endpointId}`} className="text-sm text-muted-foreground hover:underline">Back to events</Link>
 
       <div className="flex items-start gap-3">
         <Badge variant="outline" className="font-mono">{event.method}</Badge>

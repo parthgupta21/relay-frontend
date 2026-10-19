@@ -15,7 +15,7 @@ export default function Verify() {
     if (!token || started.current) return
     started.current = true
     verifyEmail(token)
-      .then(() => navigate('/endpoints', { replace: true }))
+      .then(() => navigate('/app/endpoints', { replace: true }))
       .catch(setError)
   }, [token, navigate])
 

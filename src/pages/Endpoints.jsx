@@ -74,7 +74,7 @@ export default function Endpoints() {
             {endpoints.map((endpoint) => (
               <TableRow key={endpoint.id}>
                 <TableCell className="font-medium">
-                  <Link to={`/endpoints/${endpoint.id}`} className="underline-offset-4 hover:underline">{endpoint.name}</Link>
+                  <Link to={`/app/endpoints/${endpoint.id}`} className="underline-offset-4 hover:underline">{endpoint.name}</Link>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">

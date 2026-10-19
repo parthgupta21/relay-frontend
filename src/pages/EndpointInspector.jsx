@@ -96,7 +96,7 @@ export default function EndpointInspector() {
 
   return (
     <div className="space-y-6">
-      <Link to="/endpoints" className="text-sm text-muted-foreground hover:underline">All endpoints</Link>
+      <Link to="/app/endpoints" className="text-sm text-muted-foreground hover:underline">All endpoints</Link>
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -141,7 +141,7 @@ export default function EndpointInspector() {
         <ul className="divide-y rounded-lg border">
           {events.map((event) => (
             <li key={event.id}>
-              <Link to={`/events/${event.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-muted/50">
+              <Link to={`/app/events/${event.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-muted/50">
                 <Badge variant="outline" className="font-mono">{event.method}</Badge>
                 <span className="min-w-0 flex-1 truncate font-mono text-sm">{event.path}</span>
                 <span className="text-xs text-muted-foreground">{event.contentType ?? 'no content type'}</span>
@@ -188,7 +188,7 @@ export default function EndpointInspector() {
         destructive
         onConfirm={async () => {
           await deleteEndpoint(id)
-          navigate('/endpoints', { replace: true })
+          navigate('/app/endpoints', { replace: true })
         }}
       />
     </div>
