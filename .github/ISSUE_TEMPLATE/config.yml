@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Backend issues
+    url: https://github.com/parthgupta21/relay-backend/issues
+    about: API, ingest, delivery and worker problems belong in the backend repository.
