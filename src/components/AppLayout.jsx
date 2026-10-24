@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { logout } from '@/api/auth'
@@ -7,11 +7,26 @@ import Sidebar from '@/components/Sidebar'
 import VerifyBanner from '@/components/VerifyBanner'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { socket } from '@/lib/socket'
 
-export default function AppLayout({ me, refresh }) {
+export default function AppLayout({ me }) {
   const navigate = useNavigate()
   const [loggingOut, setLoggingOut] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    let timer
+    const retry = () => {
+      timer = setTimeout(() => socket.connect(), 5000)
+    }
+    socket.on('connect_error', retry)
+    socket.connect()
+    return () => {
+      clearTimeout(timer)
+      socket.off('connect_error', retry)
+      socket.disconnect()
+    }
+  }, [])
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -43,7 +58,7 @@ export default function AppLayout({ me, refresh }) {
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
           {!me.user.emailVerified && <VerifyBanner email={me.user.email} />}
-          <Outlet context={{ me, refresh }} />
+          <Outlet context={{ me }} />
         </main>
       </div>
     </div>

@@ -60,7 +60,7 @@ export default function Sidebar({ me, onLogout, loggingOut }) {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-auto w-full justify-start gap-2 px-2 py-2" aria-label="User menu">
+            <Button variant="ghost" className="h-auto w-full justify-start gap-2 px-2 py-2">
               <Avatar className="size-7">
                 <AvatarFallback className="text-xs uppercase">{me.user.email.slice(0, 2)}</AvatarFallback>
               </Avatar>

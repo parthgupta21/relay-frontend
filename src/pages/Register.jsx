@@ -43,7 +43,7 @@ export default function Register() {
         <Button type="submit" className="w-full" disabled={submitting}>Sign up</Button>
       </form>
       <p className="text-sm text-center text-muted-foreground">
-        Already have an account? <Link to="/login" className="underline">Log in</Link>
+        Already have an account? <Link to="/login" className="underline">Sign in</Link>
       </p>
     </AuthCard>
   )

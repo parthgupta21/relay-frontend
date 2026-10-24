@@ -33,7 +33,6 @@ export default function ReplayDialog({ eventId, endpointId, onClose, onReplayed 
     })
 
   async function replay() {
-    if (selected.size === 0) throw new Error('Select at least one destination')
     try {
       const { deliveries } = await replayEvent(eventId, [...selected])
       toast.success(`${deliveries.length} ${deliveries.length === 1 ? 'delivery' : 'deliveries'} queued`)
@@ -51,6 +50,7 @@ export default function ReplayDialog({ eventId, endpointId, onClose, onReplayed 
       title="Replay event"
       description="Send this event again to the selected destinations."
       confirmLabel="Replay"
+      confirmDisabled={selected.size === 0}
       onConfirm={replay}
     >
       <ErrorMessage error={error} />

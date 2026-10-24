@@ -1,17 +1,27 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { RotateCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { getDelivery, replayDelivery } from '@/api/deliveries'
 import ErrorMessage from '@/components/ErrorMessage'
 import PageHeader from '@/components/PageHeader'
-import StatusBadge, { failureLabel, ManualTag } from '@/components/StatusBadge'
+import StatusBadge, { ManualTag } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePolling } from '@/hooks/usePolling'
+import { useRealtimeConnected, useRealtimeEvent } from '@/hooks/useRealtime'
 import { timeAgo } from '@/lib/utils'
 
 const IN_PROGRESS = ['pending', 'in_flight', 'retry_scheduled']
+
+const FAILURE_REASONS = {
+  non_retryable: 'Destination rejected the request (not retryable)',
+  exhausted: 'Retries exhausted',
+  ssrf_blocked: 'Blocked by SSRF policy',
+  destination_disabled: 'Destination was disabled',
+}
+
+const failureLabel = (reason) => FAILURE_REASONS[reason] ?? reason
 
 function Countdown({ at }) {
   const [now, setNow] = useState(() => Date.now())
@@ -22,6 +32,7 @@ function Countdown({ at }) {
   }, [])
 
   const seconds = Math.max(0, Math.ceil((new Date(at).getTime() - now) / 1000))
+  if (seconds <= 0) return <span className="font-mono">retrying now</span>
   return <span className="font-mono">next attempt in {Math.floor(seconds / 60)}m {seconds % 60}s</span>
 }
 
@@ -39,7 +50,7 @@ function Attempt({ attempt, last }) {
           <StatusBadge status={attempt.outcome} />
           {attempt.responseStatus !== null && <span className="font-mono text-sm">HTTP {attempt.responseStatus}</span>}
           <span className="font-mono text-xs text-muted-foreground">{attempt.durationMs} ms</span>
-          <time className="text-xs text-muted-foreground" title={attempt.startedAt}>{timeAgo(attempt.startedAt)}</time>
+          <time className="text-xs text-muted-foreground" dateTime={attempt.startedAt} title={new Date(attempt.startedAt).toLocaleString()}>{timeAgo(attempt.startedAt)}</time>
         </div>
         {attempt.errorMessage && <p className="break-words text-sm text-destructive">{attempt.errorMessage}</p>}
         {hasResponse && (
@@ -72,6 +83,7 @@ export default function DeliveryDetail() {
   const [delivery, setDelivery] = useState(null)
   const [error, setError] = useState(null)
   const [replaying, setReplaying] = useState(false)
+  const [version, setVersion] = useState(0)
   const navigate = useNavigate()
 
   async function replay() {
@@ -86,19 +98,30 @@ export default function DeliveryDetail() {
     setReplaying(false)
   }
 
-  const load = useCallback(
-    () => getDelivery(id).then(setDelivery).catch(setError),
-    [id],
-  )
-
   useEffect(() => {
-    load()
-  }, [load])
+    let active = true
+    const controller = new AbortController()
+    getDelivery(id, controller.signal)
+      .then((d) => {
+        if (!active) return
+        setDelivery(d)
+        setError(null)
+      })
+      .catch((err) => active && err.name !== 'AbortError' && setError(err))
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [id, version])
 
-  usePolling(() => delivery && IN_PROGRESS.includes(delivery.status) && load(), 5000)
+  const reload = () => setVersion((v) => v + 1)
+  const connected = useRealtimeConnected()
+  useRealtimeEvent('delivery.updated', (e) => e.deliveryId === id && reload())
+  useRealtimeEvent('connect', reload)
+  usePolling(() => delivery && IN_PROGRESS.includes(delivery.status) && reload(), connected ? 30000 : 5000)
 
-  if (error) return <ErrorMessage error={error} />
-  if (!delivery) {
+  if (delivery?.id !== id) {
+    if (error) return <ErrorMessage error={error} />
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-1/2" />
@@ -109,6 +132,7 @@ export default function DeliveryDetail() {
 
   return (
     <div className="space-y-8">
+      <ErrorMessage error={error} />
       <PageHeader
         back={{ to: `/app/events/${delivery.eventId}`, label: 'Back to event' }}
         title={delivery.destinationName}
@@ -120,7 +144,7 @@ export default function DeliveryDetail() {
             </span>
             {delivery.lastStatus !== null && <span className="font-mono">last HTTP {delivery.lastStatus}</span>}
             {delivery.trigger === 'manual' && <ManualTag />}
-            {delivery.replayOf && <Link to={`/app/deliveries/${delivery.replayOf}`} className="text-brand-text hover:underline">replay of {delivery.replayOf}</Link>}
+            {delivery.replayOf && <Link to={`/app/deliveries/${delivery.replayOf}`} className="text-brand-text hover:underline">View original delivery</Link>}
             {delivery.nextAttemptAt && delivery.status === 'retry_scheduled' && <Countdown at={delivery.nextAttemptAt} />}
           </span>
         }

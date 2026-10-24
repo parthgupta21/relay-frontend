@@ -20,7 +20,7 @@ export default function ResetPassword() {
     setError(null)
     try {
       await resetPassword(token, password)
-      navigate('/login', { state: { notice: 'Password updated. Log in with your new password.' } })
+      navigate('/login', { state: { notice: 'Password updated. Sign in with your new password.' } })
     } catch (err) {
       setError(err)
       setSubmitting(false)

@@ -4,6 +4,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 export default function AuthCard({ title, description, children }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
+      <title>{`${title} · RELAY`}</title>
       <div className="flex flex-col p-6">
         <div className="flex items-center justify-between">
           <Logo />

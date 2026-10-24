@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getMe } from '@/api/auth'
 
 export function useMe() {
   const [state, setState] = useState({ me: null, loading: true, error: null })
-  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -13,9 +12,7 @@ export function useMe() {
     return () => {
       active = false
     }
-  }, [tick])
+  }, [])
 
-  const refresh = useCallback(() => setTick((t) => t + 1), [])
-
-  return { ...state, refresh }
+  return state
 }

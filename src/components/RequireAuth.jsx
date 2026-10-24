@@ -5,7 +5,7 @@ import ErrorMessage from '@/components/ErrorMessage'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function RequireAuth() {
-  const { me, loading, error, refresh } = useMe()
+  const { me, loading, error } = useMe()
   const location = useLocation()
 
   if (loading) {
@@ -21,5 +21,5 @@ export default function RequireAuth() {
   }
   if (error?.status === 401) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (error) return <div className="p-6"><ErrorMessage error={error} /></div>
-  return <AppLayout me={me} refresh={refresh} />
+  return <AppLayout me={me} />
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useOutletContext } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { Plus, Webhook } from 'lucide-react'
 import { toast } from 'sonner'
 import { createEndpoint, listEndpoints } from '@/api/endpoints'
@@ -21,9 +21,9 @@ const CURL = `curl -X POST <your-endpoint-url> \\
 
 export default function Endpoints() {
   const { me } = useOutletContext()
+  const navigate = useNavigate()
   const [endpoints, setEndpoints] = useState(null)
   const [error, setError] = useState(null)
-  const [tick, setTick] = useState(0)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [name, setName] = useState('')
   const [idempotencyHeader, setIdempotencyHeader] = useState('')
@@ -36,14 +36,12 @@ export default function Endpoints() {
     return () => {
       active = false
     }
-  }, [tick])
+  }, [])
 
   async function create() {
-    await createEndpoint({ name, ...(idempotencyHeader && { idempotencyHeader }) })
-    setName('')
-    setIdempotencyHeader('')
-    setTick((t) => t + 1)
+    const { id } = await createEndpoint({ name, ...(idempotencyHeader && { idempotencyHeader }) })
     toast.success('Endpoint created')
+    navigate(`/app/endpoints/${id}`)
   }
 
   if (error) return <ErrorMessage error={error} />
@@ -53,7 +51,7 @@ export default function Endpoints() {
       <PageHeader
         title="Endpoints"
         description={endpoints && `${endpoints.length} of ${me.workspace.limits.maxEndpoints} endpoints used`}
-        actions={<Button variant="brand" onClick={() => setDialogOpen(true)}><Plus />New endpoint</Button>}
+        actions={<Button variant="brand" disabled={!me.user.emailVerified} onClick={() => setDialogOpen(true)}><Plus />New endpoint</Button>}
       />
 
       {!endpoints ? (
@@ -62,7 +60,7 @@ export default function Endpoints() {
         </div>
       ) : endpoints.length === 0 ? (
         <EmptyState icon={Webhook} title="No endpoints yet" description="Create an endpoint, then send it a request. It shows up in the inspector right away.">
-          <Button variant="brand" onClick={() => setDialogOpen(true)}><Plus />Create your first endpoint</Button>
+          <Button variant="brand" disabled={!me.user.emailVerified} onClick={() => setDialogOpen(true)}><Plus />Create your first endpoint</Button>
           <CodeBlock label="curl" code={CURL} className="mt-4 w-full max-w-xl text-left" />
         </EmptyState>
       ) : (

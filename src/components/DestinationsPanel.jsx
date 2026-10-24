@@ -113,7 +113,7 @@ function DestinationDialog({ endpointId, destination, onClose, onSaved }) {
 function SecretDialog({ secret, onClose }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Signing secret</DialogTitle>
           <DialogDescription>Use it to verify the HMAC signature on every delivery to {secret.name}.</DialogDescription>
@@ -140,6 +140,7 @@ export default function DestinationsPanel({ endpointId }) {
   const [editing, setEditing] = useState(null)
   const [secret, setSecret] = useState(null)
   const [dialog, setDialog] = useState(null)
+  const [toggling, setToggling] = useState([])
 
   useEffect(() => {
     let active = true
@@ -166,12 +167,16 @@ export default function DestinationsPanel({ endpointId }) {
   }
 
   async function toggle(destination, isActive) {
+    setToggling((ids) => [...ids, destination.id])
     try {
       replace(await updateDestination(destination.id, { isActive }))
     } catch (err) {
       toast.error(err.message)
     }
+    setToggling((ids) => ids.filter((id) => id !== destination.id))
   }
+
+  const closeDialog = (open) => !open && setDialog((d) => ({ ...d, type: null }))
 
   if (error) return <ErrorMessage error={error} />
   if (!destinations) return <div className="space-y-3">{[0, 1].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
@@ -196,7 +201,7 @@ export default function DestinationsPanel({ endpointId }) {
                 <p className="break-all font-mono text-xs text-muted-foreground">{destination.url}</p>
               </div>
               <span className="font-mono text-xs text-muted-foreground">{destination.timeoutMs} ms</span>
-              <Switch checked={destination.isActive} onCheckedChange={(on) => toggle(destination, on)} aria-label={`${destination.name} active`} />
+              <Switch checked={destination.isActive} disabled={toggling.includes(destination.id)} onCheckedChange={(on) => toggle(destination, on)} aria-label={`${destination.name} active`} />
               <div className="flex">
                 <IconAction label="Edit" onClick={() => setEditing(destination)}><Pencil /></IconAction>
                 <IconAction label="Rotate secret" onClick={() => setDialog({ type: 'rotate', destination })}><KeyRound /></IconAction>
@@ -212,7 +217,7 @@ export default function DestinationsPanel({ endpointId }) {
 
       <ConfirmDialog
         open={dialog?.type === 'rotate'}
-        onOpenChange={(open) => !open && setDialog(null)}
+        onOpenChange={closeDialog}
         title="Rotate signing secret?"
         description="The current secret stops working immediately. Update your server with the new one."
         confirmLabel="Rotate"
@@ -224,9 +229,9 @@ export default function DestinationsPanel({ endpointId }) {
       />
       <ConfirmDialog
         open={dialog?.type === 'delete'}
-        onOpenChange={(open) => !open && setDialog(null)}
+        onOpenChange={closeDialog}
         title="Delete destination?"
-        description={`Events are no longer forwarded to ${dialog?.destination.name}.`}
+        description={`Events are no longer forwarded to ${dialog?.destination?.name}.`}
         confirmLabel="Delete"
         destructive
         onConfirm={async () => {

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useRealtimeEvent } from '@/hooks/useRealtime'
 import { formatBytes, timeAgo } from '@/lib/utils'
 
 const HEX_BYTES = 4096
@@ -101,22 +102,28 @@ export function EventPanel({ id, onLoad }) {
   const [replaying, setReplaying] = useState(false)
   const [version, setVersion] = useState(0)
 
+  useRealtimeEvent('delivery.updated', (e) => e.eventId === id && setVersion((v) => v + 1))
+  useRealtimeEvent('connect', () => setVersion((v) => v + 1))
+
   useEffect(() => {
     let active = true
-    getEvent(id)
+    const controller = new AbortController()
+    getEvent(id, controller.signal)
       .then((e) => {
         if (!active) return
         setEvent(e)
+        setError(null)
         onLoad?.(e)
       })
-      .catch((err) => active && setError(err))
+      .catch((err) => active && err.name !== 'AbortError' && setError(err))
     return () => {
       active = false
+      controller.abort()
     }
   }, [id, onLoad, version])
 
-  if (error) return <ErrorMessage error={error} />
   if (!event) {
+    if (error) return <ErrorMessage error={error} />
     return (
       <div className="space-y-3">
         <Skeleton className="h-7 w-2/3" />
@@ -131,13 +138,14 @@ export function EventPanel({ id, onLoad }) {
 
   return (
     <div className="space-y-5">
+      <ErrorMessage error={error} />
       <div className="space-y-3">
         <div className="flex items-start gap-3">
           <MethodBadge method={event.method} className="mt-1" />
           <h2 className="break-all font-mono text-base font-semibold">{event.queryString ? `${event.path}?${event.queryString}` : event.path}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Chip label="Received"><time title={event.receivedAt}>{timeAgo(event.receivedAt)}</time></Chip>
+          <Chip label="Received"><time dateTime={event.receivedAt} title={new Date(event.receivedAt).toLocaleString()}>{timeAgo(event.receivedAt)}</time></Chip>
           <Chip label="Size">{formatBytes(event.bodySize)}</Chip>
           <Chip label="Type">{event.contentType ?? 'none'}</Chip>
           <Chip label="IP">{event.sourceIp}</Chip>

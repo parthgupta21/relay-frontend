@@ -9,7 +9,7 @@ export default function VerifyBanner({ email }) {
         <p className="font-medium">Verify your email</p>
         <p className="text-muted-foreground">You need to verify <span className="font-mono">{email}</span> before you can create endpoints.</p>
       </div>
-      <ResendForm email={email} variant="outline" />
+      <ResendForm email={email} />
     </div>
   )
 }

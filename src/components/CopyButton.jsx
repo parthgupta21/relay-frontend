@@ -14,7 +14,6 @@ export default function CopyButton({ text, label = 'Copy', variant = 'ghost' }) 
       return toast.error('Could not copy to clipboard')
     }
     setCopied(true)
-    toast.success('Copied to clipboard')
     setTimeout(() => setCopied(false), 1500)
   }
 
@@ -29,7 +28,7 @@ export default function CopyButton({ text, label = 'Copy', variant = 'ghost' }) 
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>{copied ? 'Copied' : label}</TooltipContent>
     </Tooltip>
   )
 }

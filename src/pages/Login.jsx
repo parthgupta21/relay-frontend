@@ -30,7 +30,7 @@ export default function Login() {
   }
 
   return (
-    <AuthCard title="Log in">
+    <AuthCard title="Sign in">
       {state?.notice && (
         <Alert><AlertDescription>{state.notice}</AlertDescription></Alert>
       )}
@@ -44,7 +44,7 @@ export default function Login() {
           <Input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         <ErrorMessage error={error} />
-        <Button type="submit" className="w-full" disabled={submitting}>Log in</Button>
+        <Button type="submit" className="w-full" disabled={submitting}>Sign in</Button>
       </form>
       <div className="flex justify-between text-sm text-muted-foreground">
         <Link to="/forgot-password" className="underline">Forgot password?</Link>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ArrowRight, Fingerprint, History, Radio, Repeat, ShieldCheck, Workflow } from 'lucide-react'
 import CodeBlock, { JsonHighlight } from '@/components/CodeBlock'
 import MethodBadge from '@/components/MethodBadge'
@@ -46,15 +46,17 @@ export function verify(rawBody, header, secret) {
 }`
 
 function MockInspector() {
+  const reduceMotion = useReducedMotion()
   const [rows, setRows] = useState(() => SAMPLES.slice(0, 3).map((s, i) => ({ ...s, key: i })).reverse())
 
   useEffect(() => {
+    if (reduceMotion) return
     let n = 3
     const timer = setInterval(() => {
       setRows((current) => [{ ...SAMPLES[n % SAMPLES.length], key: n++ }, ...current].slice(0, 5))
     }, 2800)
     return () => clearInterval(timer)
-  }, [])
+  }, [reduceMotion])
 
   const selected = rows[0]
 

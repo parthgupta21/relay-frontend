@@ -15,15 +15,6 @@ const STATES = {
   blocked: ['Blocked', 'text-destructive', 'bg-destructive'],
 }
 
-const FAILURE_REASONS = {
-  non_retryable: 'Destination rejected the request (not retryable)',
-  exhausted: 'Retries exhausted',
-  ssrf_blocked: 'Blocked by SSRF policy',
-  destination_disabled: 'Destination was disabled',
-}
-
-export const failureLabel = (reason) => FAILURE_REASONS[reason] ?? reason
-
 export function ManualTag({ className }) {
   return <span className={cn('rounded-md border px-1.5 py-0.5 text-xs text-brand-text', className)}>manual</span>
 }

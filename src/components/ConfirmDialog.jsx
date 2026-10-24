@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-export default function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, destructive, onConfirm, children }) {
+export default function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, destructive, confirmDisabled, onConfirm, children }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
 
@@ -44,7 +44,7 @@ export default function ConfirmDialog({ open, onOpenChange, title, description, 
           <ErrorMessage error={error} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-            <Button type="submit" variant={destructive ? 'destructive' : 'default'} disabled={pending}>{confirmLabel}</Button>
+            <Button type="submit" variant={destructive ? 'destructive' : 'default'} disabled={pending || confirmDisabled}>{confirmLabel}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -41,7 +41,7 @@ export default function ForgotPassword() {
         </form>
       )}
       <p className="text-sm text-center text-muted-foreground">
-        <Link to="/login" className="underline">Back to log in</Link>
+        <Link to="/login" className="underline">Back to sign in</Link>
       </p>
     </AuthCard>
   )

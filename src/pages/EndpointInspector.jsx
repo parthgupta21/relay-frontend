@@ -1,10 +1,11 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Inbox, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteEndpoint, getEndpoint, rotateSlug, updateEndpoint } from '@/api/endpoints'
 import { listEvents } from '@/api/events'
+import CodeBlock from '@/components/CodeBlock'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import CopyButton from '@/components/CopyButton'
 import DestinationsPanel from '@/components/DestinationsPanel'
@@ -22,6 +23,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePolling } from '@/hooks/usePolling'
+import { useRealtimeConnected, useRealtimeEvent } from '@/hooks/useRealtime'
 import { cn, formatBytes, timeAgo } from '@/lib/utils'
 import { EventPanel } from '@/pages/EventDetail'
 
@@ -38,19 +40,21 @@ function useIsDesktop() {
   )
 }
 
-function SettingsTab({ endpoint, onChange, onError, onRotate, onDelete }) {
+function SettingsTab({ endpoint, onChange, onRotate, onDelete }) {
   const [name, setName] = useState(endpoint.name)
   const [idempotencyHeader, setIdempotencyHeader] = useState(endpoint.idempotencyHeader ?? '')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
 
   async function save(e) {
     e.preventDefault()
     setSaving(true)
+    setError(null)
     try {
       onChange(await updateEndpoint(endpoint.id, { name, idempotencyHeader: idempotencyHeader || null }))
       toast.success('Settings saved')
     } catch (err) {
-      onError(err)
+      setError(err)
     }
     setSaving(false)
   }
@@ -60,13 +64,14 @@ function SettingsTab({ endpoint, onChange, onError, onRotate, onDelete }) {
       onChange(await updateEndpoint(endpoint.id, { isActive }))
       toast.success(isActive ? 'Endpoint enabled' : 'Endpoint disabled')
     } catch (err) {
-      onError(err)
+      toast.error(err.message)
     }
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <form onSubmit={save} className="space-y-4 rounded-xl border bg-card p-5">
+        <ErrorMessage error={error} />
         <div className="space-y-2">
           <Label htmlFor="endpoint-name">Name</Label>
           <Input id="endpoint-name" required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
@@ -107,15 +112,21 @@ export default function EndpointInspector() {
   const navigate = useNavigate()
   const isDesktop = useIsDesktop()
   const [endpoint, setEndpoint] = useState(null)
-  const [events, setEvents] = useState(null)
-  const [nextCursor, setNextCursor] = useState(null)
+  const [list, setList] = useState(null)
   const [method, setMethod] = useState('ALL')
   const [selectedId, setSelectedId] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [dialog, setDialog] = useState(null)
+  const fetching = useRef(false)
+  const pending = useRef(false)
+  const latestFetchNew = useRef(null)
 
   const methodFilter = method === 'ALL' ? undefined : method
+  const key = `${id}:${method}`
+  const currentKey = useRef(key)
+  const events = list?.key === key ? list.events : null
+  const nextCursor = list?.key === key ? list.nextCursor : null
 
   useEffect(() => {
     let active = true
@@ -132,47 +143,73 @@ export default function EndpointInspector() {
     listEvents(id, { method: methodFilter })
       .then((page) => {
         if (!active) return
-        setEvents(page.items)
-        setNextCursor(page.nextCursor)
+        setList({ key, events: page.items, nextCursor: page.nextCursor })
+        setSelectedId(page.items[0]?.id ?? null)
       })
       .catch((err) => active && setError(err))
     return () => {
       active = false
     }
-  }, [id, methodFilter])
+  }, [id, methodFilter, key])
+
+  useEffect(() => {
+    latestFetchNew.current = fetchNew
+    currentKey.current = key
+  })
+
+  useEffect(() => () => {
+    pending.current = false
+  }, [])
 
   async function fetchNew() {
-    setBusy(true)
+    if (fetching.current) {
+      pending.current = true
+      return
+    }
+    fetching.current = true
     try {
-      const page = await listEvents(id, { method: methodFilter })
-      setEvents((current) => {
-        if (!current) return current
-        const known = new Set(current.map((e) => e.id))
-        return [...page.items.filter((e) => !known.has(e.id)), ...current]
+      const page = await listEvents(id, { method: methodFilter, signal: AbortSignal.timeout(15000) })
+      setList((cur) => {
+        if (cur?.key !== key) return key === currentKey.current ? { key, events: page.items, nextCursor: page.nextCursor } : cur
+        const known = new Set(cur.events.map((e) => e.id))
+        return { ...cur, events: [...page.items.filter((e) => !known.has(e.id)), ...cur.events] }
       })
+      setSelectedId((s) => s ?? page.items[0]?.id ?? null)
       setError(null)
     } catch (err) {
       setError(err)
     }
+    fetching.current = false
+    if (pending.current) {
+      pending.current = false
+      latestFetchNew.current()
+    }
+  }
+
+  async function refresh() {
+    setBusy(true)
+    await fetchNew()
     setBusy(false)
   }
 
-  usePolling(fetchNew, 5000)
+  const connected = useRealtimeConnected()
+  useRealtimeEvent('event.created', (e) => e.endpointId === id && fetchNew())
+  useRealtimeEvent('connect', fetchNew)
+  usePolling(fetchNew, connected ? 30000 : 5000)
 
   async function loadMore() {
     setBusy(true)
     try {
       const page = await listEvents(id, { method: methodFilter, cursor: nextCursor })
-      setEvents((current) => [...current, ...page.items])
-      setNextCursor(page.nextCursor)
+      setList((cur) => (cur?.key === key ? { ...cur, events: [...cur.events, ...page.items], nextCursor: page.nextCursor } : cur))
     } catch (err) {
       setError(err)
     }
     setBusy(false)
   }
 
-  if (error && (!endpoint || !events)) return <ErrorMessage error={error} />
-  if (!endpoint || !events) {
+  if (error && !endpoint) return <ErrorMessage error={error} />
+  if (!endpoint) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-16 w-1/2" />
@@ -181,7 +218,7 @@ export default function EndpointInspector() {
     )
   }
 
-  const activeId = selectedId ?? events[0]?.id
+  const activeId = selectedId ?? events?.[0]?.id
 
   return (
     <div className="space-y-6">
@@ -208,12 +245,18 @@ export default function EndpointInspector() {
 
         <TabsContent value="events" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-sm text-success">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-60" />
-                <span className="relative inline-flex size-2 rounded-full bg-success" />
-              </span>
-              Live
+            <span role="status">
+              {connected ? (
+                <span className="flex items-center gap-2 text-sm text-success">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-60" />
+                    <span className="relative inline-flex size-2 rounded-full bg-success" />
+                  </span>
+                  Live
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">Reconnecting</span>
+              )}
             </span>
             <div className="flex items-center gap-2">
               <Select value={method} onValueChange={setMethod}>
@@ -225,18 +268,18 @@ export default function EndpointInspector() {
               </Select>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={fetchNew} disabled={busy} aria-label="Refresh events"><RefreshCw className={busy ? 'animate-spin' : ''} /></Button>
+                  <Button variant="outline" size="icon" onClick={refresh} disabled={busy} aria-label="Refresh events"><RefreshCw className={busy ? 'animate-spin' : ''} /></Button>
                 </TooltipTrigger>
                 <TooltipContent>Refresh</TooltipContent>
               </Tooltip>
             </div>
           </div>
 
-          {events.length === 0 ? (
+          {!events ? (
+            !error && <Skeleton className="h-96 w-full" />
+          ) : events.length === 0 ? (
             <EmptyState icon={Inbox} title="No events yet" description="Send a request to the endpoint URL and it shows up here within seconds.">
-              <code className="mt-2 max-w-full break-all rounded-md bg-muted px-3 py-2 font-mono text-xs">
-                curl -X POST {endpoint.url} -d &apos;hello&apos;
-              </code>
+              <CodeBlock label="curl" code={`curl -X POST ${endpoint.url} -d 'hello'`} className="mt-2 w-full max-w-xl text-left" />
             </EmptyState>
           ) : (
             <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
@@ -260,7 +303,7 @@ export default function EndpointInspector() {
                             <span className="min-w-0 flex-1 truncate font-mono text-xs">{event.path}</span>
                           </span>
                           <span className="flex justify-between text-xs text-muted-foreground">
-                            <time title={event.receivedAt}>{timeAgo(event.receivedAt)}</time>
+                            <time dateTime={event.receivedAt} title={new Date(event.receivedAt).toLocaleString()}>{timeAgo(event.receivedAt)}</time>
                             <span>{formatBytes(event.bodySize)}</span>
                           </span>
                         </Link>
@@ -288,7 +331,7 @@ export default function EndpointInspector() {
         </TabsContent>
 
         <TabsContent value="settings">
-          <SettingsTab endpoint={endpoint} onChange={setEndpoint} onError={setError} onRotate={() => setDialog('rotate')} onDelete={() => setDialog('delete')} />
+          <SettingsTab endpoint={endpoint} onChange={setEndpoint} onRotate={() => setDialog('rotate')} onDelete={() => setDialog('delete')} />
         </TabsContent>
       </Tabs>
 

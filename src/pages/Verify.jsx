@@ -22,9 +22,9 @@ export default function Verify() {
   if (!token || error?.status === 422) {
     return (
       <AuthCard title="Link invalid or expired" description="Request a new verification email.">
-        <ResendForm variant="outline" />
+        <ResendForm />
         <p className="text-sm text-center text-muted-foreground">
-          <Link to="/login" className="underline">Back to log in</Link>
+          <Link to="/login" className="underline">Back to sign in</Link>
         </p>
       </AuthCard>
     )
