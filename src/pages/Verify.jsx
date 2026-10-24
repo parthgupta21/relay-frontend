@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { verifyEmail } from '@/api/auth'
 import AuthCard from '@/components/AuthCard'
 import ErrorMessage from '@/components/ErrorMessage'
 import ResendForm from '@/components/ResendForm'
+import { Button } from '@/components/ui/button'
 
 export default function Verify() {
   const token = useSearchParams()[0].get('token')
-  const navigate = useNavigate()
+  const [verified, setVerified] = useState(false)
   const [error, setError] = useState(null)
   const started = useRef(false)
 
@@ -15,9 +16,9 @@ export default function Verify() {
     if (!token || started.current) return
     started.current = true
     verifyEmail(token)
-      .then(() => navigate('/app/endpoints', { replace: true }))
+      .then(() => setVerified(true))
       .catch(setError)
-  }, [token, navigate])
+  }, [token])
 
   if (!token || error?.status === 422) {
     return (
@@ -26,6 +27,14 @@ export default function Verify() {
         <p className="text-sm text-center text-muted-foreground">
           <Link to="/login" className="underline">Back to sign in</Link>
         </p>
+      </AuthCard>
+    )
+  }
+
+  if (verified) {
+    return (
+      <AuthCard title="Email verified" description="Your email is verified. Sign in to continue.">
+        <Button variant="brand" className="w-full" asChild><Link to="/login">Sign in</Link></Button>
       </AuthCard>
     )
   }
