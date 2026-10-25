@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, LogOut, Moon, Settings, Sun, Webhook } from 'lucide-react'
+import { BarChart3, KeyRound, LogOut, Moon, Sun, Webhook } from 'lucide-react'
 import { listEndpoints } from '@/api/endpoints'
 import Logo from '@/components/Logo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -9,6 +9,17 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
+
+function Item({ to, icon: Icon, label }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) => cn('flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors', isActive ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground')}
+    >
+      <Icon className="size-4" />{label}
+    </NavLink>
+  )
+}
 
 function Soon({ icon: Icon, label }) {
   return (
@@ -39,14 +50,9 @@ export default function Sidebar({ me, onLogout, loggingOut }) {
     <div className="flex h-full flex-col gap-6 p-4">
       <Logo to="/app/endpoints" className="px-1" />
       <nav aria-label="App" className="flex flex-col gap-1">
-        <NavLink
-          to="/app/endpoints"
-          className={({ isActive }) => cn('flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors', isActive ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground')}
-        >
-          <Webhook className="size-4" />Endpoints
-        </NavLink>
+        <Item to="/app/endpoints" icon={Webhook} label="Endpoints" />
         <Soon icon={BarChart3} label="Analytics" />
-        <Soon icon={Settings} label="Settings" />
+        <Item to="/app/settings/tokens" icon={KeyRound} label="API tokens" />
       </nav>
       <div className="mt-auto space-y-4">
         <div className="space-y-2 rounded-lg border p-3">

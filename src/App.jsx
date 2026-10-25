@@ -3,6 +3,7 @@ import { MotionConfig } from 'motion/react'
 import RequireAuth from '@/components/RequireAuth'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import ApiTokens from '@/pages/ApiTokens'
 import CheckInbox from '@/pages/CheckInbox'
 import DeliveryDetail from '@/pages/DeliveryDetail'
 import EndpointInspector from '@/pages/EndpointInspector'
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="endpoints/:id" element={<EndpointInspector />} />
               <Route path="events/:id" element={<EventDetail />} />
               <Route path="deliveries/:id" element={<DeliveryDetail />} />
+              <Route path="settings/tokens" element={<ApiTokens />} />
               <Route path="*" element={<NotFound />} />
             </Route>
             <Route path="*" element={<NotFound />} />

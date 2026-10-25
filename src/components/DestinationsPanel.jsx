@@ -3,10 +3,9 @@ import { KeyRound, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { createDestination, deleteDestination, listDestinations, rotateSecret, updateDestination } from '@/api/destinations'
 import ConfirmDialog from '@/components/ConfirmDialog'
-import CopyButton from '@/components/CopyButton'
 import EmptyState from '@/components/EmptyState'
 import ErrorMessage from '@/components/ErrorMessage'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import SecretDialog from '@/components/SecretDialog'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -110,30 +109,6 @@ function DestinationDialog({ endpointId, destination, onClose, onSaved }) {
   )
 }
 
-function SecretDialog({ secret, onClose }) {
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle>Signing secret</DialogTitle>
-          <DialogDescription>Use it to verify the HMAC signature on every delivery to {secret.name}.</DialogDescription>
-        </DialogHeader>
-        <div className="flex items-center gap-1 rounded-md bg-muted px-3 py-2">
-          <code className="min-w-0 flex-1 break-all font-mono text-xs">{secret.value}</code>
-          <CopyButton text={secret.value} label="Copy secret" />
-        </div>
-        <Alert>
-          <AlertTitle>Copy it now</AlertTitle>
-          <AlertDescription>This secret will not be shown again. If you lose it, rotate it to get a new one.</AlertDescription>
-        </Alert>
-        <DialogFooter>
-          <Button onClick={onClose}>Done</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export default function DestinationsPanel({ endpointId }) {
   const [destinations, setDestinations] = useState(null)
   const [error, setError] = useState(null)
@@ -213,7 +188,15 @@ export default function DestinationsPanel({ endpointId }) {
       )}
 
       {editing && <DestinationDialog endpointId={endpointId} destination={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={saved} />}
-      {secret && <SecretDialog secret={secret} onClose={() => setSecret(null)} />}
+      {secret && (
+        <SecretDialog
+          title="Signing secret"
+          description={`Use it to verify the HMAC signature on every delivery to ${secret.name}.`}
+          value={secret.value}
+          copyLabel="Copy secret"
+          onClose={() => setSecret(null)}
+        />
+      )}
 
       <ConfirmDialog
         open={dialog?.type === 'rotate'}
