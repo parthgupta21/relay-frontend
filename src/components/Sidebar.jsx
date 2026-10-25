@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, KeyRound, LogOut, Moon, Sun, Webhook } from 'lucide-react'
+import { BarChart3, Gauge, KeyRound, LogOut, Moon, Sun, Webhook } from 'lucide-react'
 import { listEndpoints } from '@/api/endpoints'
+import { getUsage } from '@/api/usage'
 import Logo from '@/components/Logo'
+import UsageMeter from '@/components/UsageMeter'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -33,6 +35,7 @@ function Soon({ icon: Icon, label }) {
 export default function Sidebar({ me, onLogout, loggingOut }) {
   const { pathname } = useLocation()
   const [used, setUsed] = useState(null)
+  const [month, setMonth] = useState(null)
   const { theme, toggle } = useTheme()
   const max = me.workspace.limits.maxEndpoints
 
@@ -41,6 +44,9 @@ export default function Sidebar({ me, onLogout, loggingOut }) {
     listEndpoints()
       .then((list) => active && setUsed(list.length))
       .catch(() => active && setUsed(null))
+    getUsage()
+      .then((usage) => active && setMonth(usage.month))
+      .catch(() => active && setMonth(null))
     return () => {
       active = false
     }
@@ -51,18 +57,14 @@ export default function Sidebar({ me, onLogout, loggingOut }) {
       <Logo to="/app/endpoints" className="px-1" />
       <nav aria-label="App" className="flex flex-col gap-1">
         <Item to="/app/endpoints" icon={Webhook} label="Endpoints" />
+        <Item to="/app/usage" icon={Gauge} label="Usage" />
         <Soon icon={BarChart3} label="Analytics" />
         <Item to="/app/settings/tokens" icon={KeyRound} label="API tokens" />
       </nav>
       <div className="mt-auto space-y-4">
-        <div className="space-y-2 rounded-lg border p-3">
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Endpoints</span>
-            <span className="font-mono">{used ?? '-'} / {max}</span>
-          </div>
-          <div role="progressbar" aria-label="Endpoints used" aria-valuemin={0} aria-valuemax={max} aria-valuenow={used ?? 0} className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${Math.min(100, ((used ?? 0) / max) * 100)}%` }} />
-          </div>
+        <div className="space-y-3 rounded-lg border p-3">
+          <UsageMeter label="Endpoints" value={used ?? 0} limit={max} />
+          {month && <UsageMeter label="Events this month" value={month.events} limit={month.eventsLimit} />}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -15,6 +15,7 @@ import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 import Register from '@/pages/Register'
 import ResetPassword from '@/pages/ResetPassword'
+import Usage from '@/pages/Usage'
 import Verify from '@/pages/Verify'
 
 function LegacyRedirect({ to }) {
@@ -43,6 +44,7 @@ export default function App() {
               <Route path="endpoints/:id" element={<EndpointInspector />} />
               <Route path="events/:id" element={<EventDetail />} />
               <Route path="deliveries/:id" element={<DeliveryDetail />} />
+              <Route path="usage" element={<Usage />} />
               <Route path="settings/tokens" element={<ApiTokens />} />
               <Route path="*" element={<NotFound />} />
             </Route>

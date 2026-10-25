@@ -38,7 +38,7 @@ export default function ReplayDialog({ eventId, endpointId, onClose, onReplayed 
       toast.success(`${deliveries.length} ${deliveries.length === 1 ? 'delivery' : 'deliveries'} queued`)
       onReplayed()
     } catch (err) {
-      if (err.code !== 'QUOTA_EXCEEDED') throw err
+      if (err.code !== 'RATE_LIMITED') throw err
       toast.error('Replay limit reached, try again later')
     }
   }

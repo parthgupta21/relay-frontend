@@ -93,7 +93,7 @@ export default function DeliveryDetail() {
       toast.success('Replay queued')
       navigate(`/app/deliveries/${replayed.id}`)
     } catch (err) {
-      toast.error(err.code === 'QUOTA_EXCEEDED' ? 'Replay limit reached, try again later' : err.message)
+      toast.error(err.code === 'RATE_LIMITED' ? 'Replay limit reached, try again later' : err.message)
     }
     setReplaying(false)
   }
