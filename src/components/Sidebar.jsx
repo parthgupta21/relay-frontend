@@ -6,7 +6,6 @@ import { getUsage } from '@/api/usage'
 import Logo from '@/components/Logo'
 import UsageMeter from '@/components/UsageMeter'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useTheme } from '@/hooks/useTheme'
@@ -20,15 +19,6 @@ function Item({ to, icon: Icon, label }) {
     >
       <Icon className="size-4" />{label}
     </NavLink>
-  )
-}
-
-function Soon({ icon: Icon, label }) {
-  return (
-    <span aria-disabled="true" className="flex cursor-not-allowed items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground/60">
-      <Icon className="size-4" />{label}
-      <Badge variant="secondary" className="ml-auto">Soon</Badge>
-    </span>
   )
 }
 
@@ -58,7 +48,7 @@ export default function Sidebar({ me, onLogout, loggingOut }) {
       <nav aria-label="App" className="flex flex-col gap-1">
         <Item to="/app/endpoints" icon={Webhook} label="Endpoints" />
         <Item to="/app/usage" icon={Gauge} label="Usage" />
-        <Soon icon={BarChart3} label="Analytics" />
+        <Item to="/app/analytics" icon={BarChart3} label="Analytics" />
         <Item to="/app/settings/tokens" icon={KeyRound} label="API tokens" />
       </nav>
       <div className="mt-auto space-y-4">
