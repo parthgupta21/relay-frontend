@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, Gauge, KeyRound, LogOut, Moon, Sun, Webhook } from 'lucide-react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { BarChart3, Gauge, KeyRound, LogOut, Moon, Sun, UserRound, Webhook } from 'lucide-react'
 import { listEndpoints } from '@/api/endpoints'
 import { getUsage } from '@/api/usage'
 import Logo from '@/components/Logo'
@@ -68,6 +68,9 @@ export default function Sidebar({ me, onLogout, loggingOut }) {
           <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuLabel className="truncate font-normal text-muted-foreground">{me.user.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/app/settings/account"><UserRound />Account</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={(e) => { e.preventDefault(); toggle() }}>
               {theme === 'dark' ? <Sun /> : <Moon />}{theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </DropdownMenuItem>
