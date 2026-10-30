@@ -19,9 +19,17 @@ map $http_x_forwarded_proto $relay_proto {
     default $scheme;
 }
 
+map $uri $relay_log_path {
+    "~^/h/(?<slug_head>[^/]{1,6})" /h/$slug_head...;
+    default $uri;
+}
+
+log_format relay '$remote_addr [$time_local] "$request_method $relay_log_path" $status $body_bytes_sent $request_time';
+
 server {
     listen 80;
     server_tokens off;
+    access_log /var/log/nginx/access.log relay;
     root /usr/share/nginx/html;
     resolver 127.0.0.11 valid=10s ipv6=off;
     set $relay_api ${RELAY_API_UPSTREAM};
