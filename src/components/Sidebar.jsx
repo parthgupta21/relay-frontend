@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { BarChart3, Gauge, KeyRound, LogOut, Moon, Sun, UserRound, Webhook } from 'lucide-react'
+import { BarChart3, Gauge, KeyRound, LogOut, Moon, Shield, Sun, UserRound, Webhook } from 'lucide-react'
 import { listEndpoints } from '@/api/endpoints'
 import { getUsage } from '@/api/usage'
 import Logo from '@/components/Logo'
@@ -50,6 +50,7 @@ export default function Sidebar({ me, onLogout, loggingOut }) {
         <Item to="/app/usage" icon={Gauge} label="Usage" />
         <Item to="/app/analytics" icon={BarChart3} label="Analytics" />
         <Item to="/app/settings/tokens" icon={KeyRound} label="API tokens" />
+        {me.user.isOperator && <Item to="/app/admin" icon={Shield} label="Admin" />}
       </nav>
       <div className="mt-auto space-y-4">
         <div className="space-y-3 rounded-lg border p-3">

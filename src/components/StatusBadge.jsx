@@ -2,6 +2,8 @@ import { cn } from '@/lib/utils'
 
 const STATES = {
   active: ['Active', 'text-success', 'bg-success'],
+  suspended: ['Suspended', 'text-warning', 'bg-warning'],
+  deleted: ['Deleted', 'text-destructive', 'bg-destructive'],
   disabled: ['Disabled', 'text-muted-foreground', 'bg-muted-foreground'],
   pending: ['Pending', 'text-muted-foreground', 'bg-muted-foreground'],
   in_flight: ['In flight', 'text-warning', 'bg-warning animate-pulse'],

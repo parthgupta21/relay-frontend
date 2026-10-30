@@ -1,9 +1,13 @@
 import { BrowserRouter, generatePath, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { MotionConfig } from 'motion/react'
 import RequireAuth from '@/components/RequireAuth'
+import RequireOperator from '@/components/RequireOperator'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Account from '@/pages/Account'
+import AdminAudit from '@/pages/AdminAudit'
+import AdminWorkspace from '@/pages/AdminWorkspace'
+import AdminWorkspaces from '@/pages/AdminWorkspaces'
 import Analytics from '@/pages/Analytics'
 import ApiTokens from '@/pages/ApiTokens'
 import CheckInbox from '@/pages/CheckInbox'
@@ -50,6 +54,11 @@ export default function App() {
               <Route path="analytics" element={<Analytics />} />
               <Route path="settings/tokens" element={<ApiTokens />} />
               <Route path="settings/account" element={<Account />} />
+              <Route path="admin" element={<RequireOperator />}>
+                <Route index element={<AdminWorkspaces />} />
+                <Route path="workspaces/:id" element={<AdminWorkspace />} />
+                <Route path="audit" element={<AdminAudit />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Route>
             <Route path="*" element={<NotFound />} />
