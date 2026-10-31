@@ -119,7 +119,7 @@ When `/auth/me` answers `403`, `RequireAuth` shows a "Workspace suspended" scree
 ### Landing page
 
 - Public page at `/` with hero, an animated mock inspector, "How it works", feature grid, and `curl` and signature-verification code samples.
-- The signature sample matches the backend signer: header `X-Relay-Signature: t=<unix>,v1=<hex>`, HMAC-SHA256 over `<t>.<raw body>`.
+- The signature sample matches the backend signer: header `X-Relay-Signature: t=<unix>,v1=<hex>,v2=<hex>`, HMAC-SHA256 over `<t>.<raw body>` (v1) and `<t>.<event id>.<delivery id>.<raw body>` (v2).
 - Calls to action switch between "Get started free" and "Open dashboard" based on the session.
 
 ## How it talks to the backend
@@ -189,6 +189,10 @@ What the config does:
 - **Client address.** `X-Forwarded-For` is set to the connection's remote address, which replaces any value the client sent. `X-Forwarded-Proto` is `https` when the incoming request already says `https`, otherwise the connection's own scheme. A TLS terminator in front of nginx can therefore make the backend see HTTPS, which the `Secure` session cookie needs.
 - **Content-Security-Policy.** `default-src 'self'; connect-src 'self' ws://<host> wss://<host>; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`. `<host>` is the request's `Host` header, kept only if it matches `[A-Za-z0-9.:-]+`, so the WebSocket origin follows the host the page was loaded from. The theme script is the external `/theme.js`, so no inline script is needed. nginx also sends `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`.
 - **Caching.** `/assets/` gets `public, max-age=31536000, immutable`. Other static files get `no-cache`. Proxied paths get no `Cache-Control` from nginx.
+- **Rate limits (per client IP, `429` when exceeded).** `/api/` and `/socket.io/` allow 10 requests/s with bursts of 40 and 20. Non-GET requests to `/api/v1/auth/` (login, register, forgot/reset, verify, resend) also count against a stricter 10 requests/minute limit with a burst of 10. `GET /api/v1/auth/me` only uses the `/api/` limit. `/h/` allows 50 requests/s with a burst of 100. Static files are not rate limited. These limits live in nginx, so they work even if Redis or the backend limiter is down.
+- **Connections and timeouts.** At most 50 concurrent connections per client IP (`429` beyond that). `client_header_timeout`, `client_body_timeout` and `send_timeout` are 10 s and `keepalive_timeout` is 15 s, so slow clients are dropped. The 1 hour `proxy_read_timeout` on `/socket.io/` is a separate upstream timeout and is unaffected.
+- **Client IP behind another proxy.** The limits key on `$binary_remote_addr`. Behind an extra load balancer that is the balancer's IP, so every user shares one bucket unless the `real_ip` module is configured to read the real client address.
+- **HSTS.** `Strict-Transport-Security: max-age=31536000; includeSubDomains` is sent only when `X-Forwarded-Proto` is `https`.
 - **Compression.** `gzip` for CSS, JavaScript, JSON and SVG.
 - **Masked access log.** The logged path is the URI without the query string, and `/h/<slug>` is cut to its first 6 characters followed by `...`.
 - `server_tokens off` hides the nginx version.
